@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Barrows Connected Store — Pre-Signing Gantt</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23CC0000'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial' font-weight='bold' font-size='18' fill='white'>B</text></svg>">
+<style>
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0A0A14;color:#fff;min-height:100vh}
+.hdr{background:#0A0A14;border-bottom:1px solid rgba(255,255,255,0.08);padding:0 2rem;position:sticky;top:0;z-index:100}
+.hdr-in{max-width:1000px;margin:0 auto;height:58px;display:flex;align-items:center}
+.wm{display:flex;align-items:center;gap:10px}
+.wm-dot{width:30px;height:30px;background:#007C85;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#fff;flex-shrink:0}
+.wm-name{font-size:13px;font-weight:600;color:#fff;letter-spacing:.05em;text-transform:uppercase}
+.wm-sub{font-size:11px;color:rgba(255,255,255,0.35)}
+.prog-wrap{background:#0D0D1A;border-bottom:1px solid rgba(255,255,255,0.05);padding:0 2rem}
+.prog-in{max-width:1000px;margin:0 auto;padding:14px 0 10px}
+.prog-bar{height:2px;background:rgba(255,255,255,0.07);border-radius:2px;margin-bottom:10px}
+.prog-fill{height:2px;background:linear-gradient(90deg,#CC0000,#FF6B6B);border-radius:2px;transition:width .4s}
+.prog-steps{display:flex}
+.prog-step{flex:1;font-size:11px;color:rgba(255,255,255,0.25);text-align:center}
+.prog-step.done{color:rgba(255,255,255,0.4)}.prog-step.act{color:#FF6B6B;font-weight:600}
+.shell{max-width:1000px;margin:0 auto;padding:2.5rem 2rem 5rem}
+.step{display:none}.step.active{display:block}
+.hero{margin-bottom:2rem}
+.eyebrow{font-size:11px;font-weight:600;color:#CC0000;letter-spacing:.09em;text-transform:uppercase;margin-bottom:10px}
+.htitle{font-size:28px;font-weight:700;color:#fff;margin-bottom:8px}
+.hsub{font-size:15px;color:rgba(255,255,255,0.45);line-height:1.6}
+.card{background:rgba(255,255,255,0.035);border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:1.5rem;margin-bottom:14px}
+.fl{margin-bottom:20px}.fl:last-child{margin-bottom:0}
+.flbl{font-size:13px;font-weight:600;color:#fff;margin-bottom:4px}
+.fhint{font-size:12px;color:rgba(255,255,255,0.38);margin-bottom:8px;line-height:1.5}
+input[type=text],input[type=date],input[type=number]{width:100%;padding:11px 14px;font-size:14px;border:1px solid rgba(255,255,255,0.1);border-radius:10px;background:rgba(255,255,255,0.05);color:#fff;outline:none;font-family:inherit}
+input[type=text]::placeholder,input[type=date]::placeholder{color:rgba(255,255,255,0.2)}
+input[type=text]:focus,input[type=date]:focus,input[type=number]:focus{border-color:#CC0000}
+input[type=number]{width:120px}
+input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.7)}
+.pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.pill{padding:8px 16px;border:1px solid rgba(255,255,255,0.12);border-radius:24px;font-size:13px;color:rgba(255,255,255,0.55);cursor:pointer;background:transparent;transition:all .15s;user-select:none}
+.pill:hover{border-color:rgba(204,0,0,0.5);color:#FF6B6B}
+.pill.on{background:#CC0000;border-color:#CC0000;color:#fff;font-weight:600}
+.nav{display:flex;justify-content:space-between;align-items:center;margin-top:2rem}
+.btn{padding:10px 20px;border:1px solid rgba(255,255,255,0.12);border-radius:10px;background:transparent;color:rgba(255,255,255,0.6);font-size:14px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:8px;transition:all .15s;font-family:inherit}
+.btn:hover{background:rgba(255,255,255,0.06);color:#fff}
+.btnp{background:#CC0000;border-color:#CC0000;color:#fff}.btnp:hover{background:#AA0000}
+.btnsheets{background:rgba(15,157,88,0.2);border-color:rgba(15,157,88,0.5);color:#4ade80}
+.btnsheets:hover{background:rgba(15,157,88,0.35)}
+.btnhtml{background:rgba(46,82,181,0.2);border-color:rgba(46,82,181,0.5);color:#90b8f8}
+.btnhtml:hover{background:rgba(46,82,181,0.35)}
+.btnrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:1.5rem}
+.ws-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}
+.ws-tile{border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px 12px;cursor:pointer;transition:all .14s;display:flex;align-items:center;gap:10px}
+.ws-tile:hover{border-color:rgba(204,0,0,0.4)}
+.ws-tile.on{border-color:#CC0000;background:rgba(204,0,0,0.1)}
+.ws-check{width:18px;height:18px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
+.ws-tile.on .ws-check{background:#FF6B6B;border-color:#FF6B6B;color:#880000;font-weight:700}
+.ws-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.ws-name{font-size:12px;font-weight:600;color:rgba(255,255,255,0.75)}
+.ws-tile.on .ws-name{color:#FF6B6B}
+.leads-table{width:100%;border-collapse:collapse}
+.leads-table tr{border-bottom:1px solid rgba(255,255,255,0.05)}
+.leads-table td{padding:8px 10px;vertical-align:middle}
+.lead-dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:8px}
+.lead-ws{font-size:12px;font-weight:600;color:rgba(255,255,255,0.7);white-space:nowrap}
+.lead-inp{width:100%;padding:7px 10px;font-size:13px;border:1px solid rgba(255,255,255,0.08);border-radius:8px;background:rgba(255,255,255,0.04);color:#fff;outline:none;font-family:inherit}
+.lead-inp::placeholder{color:rgba(255,255,255,0.2)}
+.lead-inp:focus{border-color:#CC0000;background:rgba(204,0,0,0.08)}
+.opts-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.opt-toggle{display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid rgba(255,255,255,0.08);border-radius:10px;cursor:pointer;user-select:none}
+.opt-toggle.on{border-color:#CC0000;background:rgba(204,0,0,0.08)}
+.opt-label{font-size:13px;color:rgba(255,255,255,0.6)}
+.opt-toggle.on .opt-label{color:#FF6B6B}
+.toggle-sw{width:32px;height:18px;border-radius:9px;background:rgba(255,255,255,0.1);position:relative;transition:background .15s}
+.opt-toggle.on .toggle-sw{background:#CC0000}
+.toggle-sw::after{content:'';position:absolute;top:3px;left:3px;width:12px;height:12px;border-radius:50%;background:#fff;transition:left .15s}
+.opt-toggle.on .toggle-sw::after{left:17px}
+.footer{text-align:center;padding:2rem 0 4rem;font-size:11px;color:rgba(255,255,255,0.15);letter-spacing:.06em;text-transform:uppercase}
+/* GANTT */
+.gantt-wrap{background:#fff;border-radius:14px;padding:2rem;color:#111;margin-bottom:1rem;overflow-x:auto}
+.g-logo{font-size:11px;font-weight:700;color:#CC0000;letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px}
+.g-title{font-size:20px;font-weight:700;color:#111;margin-bottom:2px}
+.g-sub{font-size:12px;color:#888;margin-bottom:16px}
+.g-divider{height:3px;background:#CC0000;border-radius:2px;margin-bottom:18px}
+.g-grid{display:table;width:100%;border-collapse:collapse;min-width:850px}
+.g-row{display:table-row}
+.g-row:hover .g-bars-cell{background:rgba(204,0,0,0.02)}
+.g-row:not(:last-child) .g-cell{border-bottom:1px solid #f0f0f0}
+.g-cell{display:table-cell;vertical-align:middle;white-space:nowrap}
+.g-cell-label{width:150px;min-width:150px;padding:3px 8px;font-size:10px;color:#222}
+.g-cell-lead{width:78px;min-width:78px;padding:3px 6px;font-size:10px;color:#CC0000;text-align:center;font-weight:600}
+.g-cell-role{width:74px;min-width:74px;padding:3px 6px;font-size:9px;color:#999;text-align:center}
+.g-bars-cell{padding:2px 0}
+.g-bars-track{position:relative;height:28px}
+.g-wk-line{position:absolute;top:0;bottom:0;width:1px;background:#efefef;pointer-events:none}
+.g-bar{position:absolute;top:4px;height:20px;border-radius:3px;display:flex;align-items:center;padding:0 6px 0 4px;overflow:hidden;box-sizing:border-box;user-select:none}
+.g-bar span{font-size:9px;color:#fff;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;pointer-events:none;flex:1;min-width:0}
+.g-bar.drag-mode{cursor:grab}.g-bar.drag-mode:hover{filter:brightness(1.1);box-shadow:0 2px 8px rgba(0,0,0,.12)}
+.g-bar.dragging{cursor:grabbing!important;filter:brightness(1.15);box-shadow:0 4px 14px rgba(0,0,0,.2);opacity:.9;z-index:50}
+.rz{position:absolute;top:0;bottom:0;width:8px;z-index:3;cursor:ew-resize}
+.rz-l{left:0}.rz-r{right:0}
+.rz::after{content:'';position:absolute;top:5px;bottom:5px;width:2px;background:rgba(255,255,255,.45);border-radius:1px}
+.rz-l::after{left:2px}.rz-r::after{right:2px}
+.bar-ph1{background:#880000}.bar-ph2{background:#CC0000}
+.bar-ph3{background:#FF6600}.bar-ph4{background:#CC8800}
+.bar-ph5{background:#007C85}
+.g-hdr-row{display:table-row}
+.g-hdr-cell{display:table-cell;vertical-align:middle;font-size:9px;font-weight:600;color:#fff;text-align:center;padding:4px 2px;white-space:nowrap}
+.g-hdr-label{width:150px;min-width:150px;background:#f5f5f5!important;color:#666!important;text-align:left;padding-left:8px}
+.g-hdr-lead{width:78px;min-width:78px;background:#f5f5f5!important;color:#666!important;text-align:center}
+.g-hdr-role{width:74px;min-width:74px;background:#f5f5f5!important;color:#888!important;text-align:center}
+.g-wk-hdr{display:flex;border-bottom:1px solid #e5e5e5}
+.g-wk-lbl{font-size:9px;color:#888;text-align:center;padding:3px 1px;flex-shrink:0;overflow:hidden}
+.g-track-hdr .g-cell{background:#0A0A14;color:#FF6B6B;font-weight:600;font-size:11px;padding:5px 8px}
+.g-gate-pip{position:absolute;top:2px;bottom:2px;width:2px;background:#FFD700;z-index:10;pointer-events:none}
+.g-gate-lbl{position:absolute;top:0;font-size:8px;font-weight:700;color:#CC8800;white-space:nowrap;z-index:11;pointer-events:none}
+.g-tooltip{position:fixed;background:#111;color:#fff;font-size:11px;padding:4px 8px;border-radius:5px;pointer-events:none;z-index:9999;white-space:nowrap;display:none}
+.dep-panel{margin-top:14px;padding:10px 14px;background:#fff5f5;border-radius:8px;border-left:3px solid #CC0000}
+.dep-title{font-size:10px;font-weight:700;color:#CC0000;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.dep-grid{display:grid;grid-template-columns:1fr 1fr;gap:3px 16px}
+.dep-item{font-size:10px;color:#444;line-height:1.5}
+.risk-panel{margin-top:10px;padding:10px 14px;background:#fff8e7;border-radius:8px;border-left:3px solid #cc8800}
+.risk-title{font-size:10px;font-weight:700;color:#cc8800;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.risk-item{font-size:10px;color:#555;margin-bottom:3px;line-height:1.4;display:flex;gap:6px}
+.risk-bullet{color:#cc8800;flex-shrink:0}
+.legend-row{display:flex;gap:14px;margin-top:12px;flex-wrap:wrap;align-items:center}
+.leg{display:flex;align-items:center;gap:5px;font-size:10px;color:#666}
+.leg-swatch{width:24px;height:10px;border-radius:2px}
+.g-footer{font-size:10px;color:#bbb;margin-top:14px;text-align:center}
+/* Edit mode */
+.edit-hint{font-size:11px;color:rgba(255,255,255,0.35);padding:8px 0;display:none}
+.btn-edit-toggle{padding:7px 14px;border:1px solid rgba(204,0,0,0.5);border-radius:8px;background:rgba(204,0,0,0.12);color:#FF6B6B;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;transition:all .15s}
+.btn-edit-toggle:hover{background:rgba(204,0,0,0.22)}
+.btn-edit-toggle.active{background:rgba(204,0,0,0.3);border-color:#FF6B6B}
+.btn-reset-all{padding:7px 14px;border:1px solid rgba(255,100,50,0.4);border-radius:8px;background:transparent;color:rgba(255,150,100,0.8);font-size:13px;cursor:pointer;font-family:inherit;display:none}
+.btn-reset-all:hover{background:rgba(255,100,50,0.1)}
+@media(max-width:600px){.shell{padding:1.5rem 1rem 4rem}}
+@media print{body{background:#fff}.hdr,.prog-wrap,.nav,.btnrow,.footer{display:none!important}.shell{padding:0}.gantt-wrap{border-radius:0;padding:1rem}.step{display:block!important}#s-profile,#s-workstreams,#s-leads,#s-options{display:none!important}}
+
+</style>
+</head>
+<body>
+
+<div class="hdr"><div class="hdr-in"><div class="wm">
+  <div class="wm-dot">B</div>
+  <div><div class="wm-name">Barrows Connected Store</div><div class="wm-sub">Pre-Signing Gantt &middot; Phases 1&ndash;4</div></div>
+</div></div></div>
+
+<div class="prog-wrap"><div class="prog-in">
+  <div class="prog-bar"><div class="prog-fill" id="prog" style="width:20%"></div></div>
+  <div class="prog-steps">
+    <div class="prog-step act" id="ps1">1. Retailer</div>
+    <div class="prog-step" id="ps2">2. Workstreams</div>
+    <div class="prog-step" id="ps3">3. Leads</div>
+    <div class="prog-step" id="ps4">4. Options</div>
+    <div class="prog-step" id="ps5">5. Gantt</div>
+  </div>
+</div></div>
+
+<div class="shell">
+<div class="step active" id="s-profile">
+  <div class="hero"><div class="eyebrow">Step 1 of 5</div><div class="htitle">Retailer details</div>
+  <div class="hsub">Enter the basics &mdash; the Gantt covers Phases 1&ndash;4 across 20 weeks. Pre-populated with BP critical path data.</div></div>
+  <div class="card">
+    <div class="fl"><div class="flbl">Retailer name</div><input type="text" id="p-name" placeholder="e.g. BP, CVS, Morrisons"></div>
+    <div class="fl"><div class="flbl">Programme start date</div><div class="fhint">Sets W1 &mdash; all milestone dates calculate from this</div><input type="date" id="p-start"></div>
+    <div class="fl"><div class="flbl">Number of POC stores</div><input type="number" id="p-stores" min="1" max="500" value="3"></div>
+    <div class="fl"><div class="flbl">Geography</div>
+      <div class="pills" data-key="geo"><div class="pill" data-val="uk">UK</div><div class="pill" data-val="us">US</div><div class="pill" data-val="sa">South Africa</div><div class="pill" data-val="eu">Europe</div></div>
+    </div>
+    <div class="fl"><div class="flbl">Sector</div><div class="fhint">Adds SERT / hazardous area flags for petrol / forecourt retailers</div>
+      <div class="pills" data-key="sector">
+        <div class="pill" data-val="grocery">Grocery</div><div class="pill" data-val="pharmacy">Pharmacy</div>
+        <div class="pill" data-val="petrol">Petrol / Forecourt</div><div class="pill" data-val="convenience">Convenience</div>
+        <div class="pill" data-val="diy">DIY / Home</div><div class="pill" data-val="fashion">Fashion</div>
+        <div class="pill" data-val="gym">Gym</div><div class="pill" data-val="other">Other</div>
+      </div>
+    </div>
+  </div>
+  <div class="nav"><span></span><button class="btn btnp" id="btn-to-ws">Select workstreams &rarr;</button></div>
+</div>
+
+<div class="step" id="s-workstreams">
+  <div class="hero"><div class="eyebrow">Step 2 of 5</div><div class="htitle">Select workstreams</div>
+  <div class="hsub">All 13 included by default &mdash; deselect any not active in this pre-signing phase</div></div>
+  <div class="card"><div class="ws-grid" id="ws-grid"></div></div>
+  <div class="nav"><button class="btn" id="btn-back-ws">&larr; Back</button><button class="btn btnp" id="btn-to-leads">Assign leads &rarr;</button></div>
+</div>
+
+<div class="step" id="s-leads">
+  <div class="hero"><div class="eyebrow">Step 3 of 5</div><div class="htitle">Assign leads</div>
+  <div class="hsub">Name the person owning each workstream in the pre-signing phase. BCS defaults are pre-filled.</div></div>
+  <div class="card"><table class="leads-table" id="leads-table"></table></div>
+  <div class="nav"><button class="btn" id="btn-back-leads">&larr; Back</button><button class="btn btnp" id="btn-to-opts">Options &rarr;</button></div>
+</div>
+
+<div class="step" id="s-options">
+  <div class="hero"><div class="eyebrow">Step 4 of 5</div><div class="htitle">Options</div>
+  <div class="hsub">Customise what appears on the Gantt</div></div>
+  <div class="card">
+    <div class="fl"><div class="flbl">Display</div>
+      <div class="opts-row" id="opts-toggles">
+        <div class="opt-toggle on" data-key="showRisks"><div class="toggle-sw"></div><div class="opt-label">Risk flags</div></div>
+        <div class="opt-toggle on" data-key="showDeps"><div class="toggle-sw"></div><div class="opt-label">Dependencies</div></div>
+        <div class="opt-toggle on" data-key="showLegend"><div class="toggle-sw"></div><div class="opt-label">Legend</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="nav"><button class="btn" id="btn-back-opts">&larr; Back</button><button class="btn btnp" id="btn-generate">Generate Gantt &rarr;</button></div>
+</div>
+
+<div class="step" id="s-gantt">
+  <div class="hero"><div class="eyebrow">Step 5 of 5</div><div class="htitle">Pre-Signing Gantt</div>
+  <div class="hsub">Print as PDF, export as HTML, or download a formatted .ods file for Google Sheets</div></div>
+  <div class="btnrow">
+    <button class="btn" id="btn-back-gantt">&larr; Back</button>
+    <button class="btn" onclick="window.print()">&#128438; Print / PDF</button>
+    <button class="btn btnhtml" id="btn-html">&darr; Export HTML</button>
+    <button class="btn btnsheets" id="btn-sheets">&darr; Download for Google Sheets (.ods)</button>
+    <button class="btn-edit-toggle" id="btn-edit-toggle">&#9998; Edit timeline</button>
+    <button class="btn-reset-all" id="btn-reset-all">&#8635; Reset timeline</button>
+  </div>
+  <div id="edit-hint" class="edit-hint">&#9998; Click any bar to drag or resize. Drag left/right edges to change duration.</div>
+  <div id="gantt-out" style="position:relative"></div>
+</div>
+</div>
+<div class="footer">Barrows Connected Store &middot; Pre-Signing Gantt &middot; Phases 1&ndash;4</div>
+
+<script>
+
+var P={name:'',start:'',stores:3,geo:'',sector:''};
+var OPTS={showRisks:true,showDeps:true,showLegend:true};
+var WS_SEL={};
+var WS_LEADS={};
+
+var WS_DEFS=[
+  {id:'ws1', label:'WS1 · CX & Instore Design',     def:'Design Lead (Bev)',           col:'#007C85'},
+  {id:'ws2', label:'WS2 · Measurement',              def:'Attribution Lead',            col:'#CC0000'},
+  {id:'ws3', label:'WS3 · Commercial & SLA',         def:'Commercial Lead (Luke)',       col:'#888'},
+  {id:'ws4', label:'WS4 · Tech Integration',         def:'Product Lead (Jono/Tim)',      col:'#2e52b5'},
+  {id:'ws5', label:'WS5 · Connectivity',             def:'Product Lead (Bryan/Jono)',    col:'#26ad61'},
+  {id:'ws6', label:'WS6 · Data Sharing',             def:'Data Lead (Stafford/Tim)',     col:'#8f45ad'},
+  {id:'ws7', label:'WS7 · Content Development',      def:'Content Manager (Izzy)',       col:'#f29c12'},
+  {id:'ws8', label:'WS8 · Customer Training',        def:'Commercial Lead',              col:'#2980ba'},
+  {id:'ws9', label:'WS9 · Media Sales',              def:'Commercial Lead (Luke)',        col:'#1abd9c'},
+  {id:'ws10',label:'WS10 · Sensor Implementation',   def:'Engineering (Tom)',            col:'#e57d21'},
+  {id:'ws11',label:'WS11 · Support & Maintenance',   def:'Operations (Nick/Jimbo)',      col:'#17a185'},
+  {id:'ws12',label:'WS12 · Procurement',             def:'Commercial Lead (Luke)',        col:'#e87d21'},
+  {id:'ws13',label:'WS13 · Build & Installation',    def:'Install Lead',                 col:'#a14000'},
+];
+WS_DEFS.forEach(function(w){WS_SEL[w.id]=true;WS_LEADS[w.id]=w.def;});
+
+// Pre-signing activity data — 20-week programme across 4 phases
+// Phase 1=Pre-RFP(#880000), 2=RFP(#CC0000), 3=POC(#FF6600), 4=Signing(#CC8800)
+// BP critical path pre-populated: Jun 1 start, Track 1 LIVE Aug 3, Track 2 LIVE Sep 7
+var WS_DATA={
+  ws1: [
+    {w1:1,w2:3,ph:1,lbl:'Store audit & assessment'},
+    {w1:2,w2:5,ph:1,lbl:'Design concepts & renders'},
+    {w1:4,w2:6,ph:2,lbl:'Touchpoint recommendations'},
+    {w1:6,w2:7,ph:2,lbl:'Review design response'},
+    {w1:8,w2:12,ph:3,lbl:'Full state prototypes'},
+  ],
+  ws2: [
+    {w1:1,w2:2,ph:1,lbl:'Measurement capability demo'},
+    {w1:3,w2:5,ph:2,lbl:'Measurement framework proposal'},
+    {w1:8,w2:10,ph:3,lbl:'Pilot measurement model'},
+  ],
+  ws3: [
+    {w1:1,w2:3,ph:1,lbl:'Commercial scoping'},
+    {w1:3,w2:5,ph:2,lbl:'IC Approval paper'},
+    {w1:4,w2:6,ph:2,lbl:'Cost schedule & capex'},
+    {w1:6,w2:8,ph:3,lbl:'POC commercial structure'},
+    {w1:9,w2:11,ph:3,lbl:'Full state capex & commercials'},
+    {w1:14,w2:16,ph:4,lbl:'MSA negotiation'},
+    {w1:17,w2:18,ph:4,lbl:'Contract execution'},
+  ],
+  ws4: [
+    {w1:2,w2:4,ph:1,lbl:'Platform overview & demo'},
+    {w1:5,w2:7,ph:2,lbl:'Tech integration scoping'},
+    {w1:8,w2:10,ph:3,lbl:'API & connectivity mapping'},
+    {w1:12,w2:13,ph:3,lbl:'Digital security sign-off'},
+  ],
+  ws5: [
+    {w1:3,w2:5,ph:1,lbl:'Connectivity survey'},
+    {w1:6,w2:8,ph:2,lbl:'Network assessment'},
+    {w1:9,w2:11,ph:3,lbl:'Wi-Fi provisioning & SSID'},
+  ],
+  ws6: [
+    {w1:2,w2:4,ph:1,lbl:'Data maturity assessment'},
+    {w1:5,w2:7,ph:2,lbl:'DPIA initiation'},
+    {w1:8,w2:10,ph:3,lbl:'DSA drafting'},
+    {w1:14,w2:16,ph:4,lbl:'DSA execution'},
+    {w1:18,w2:19,ph:4,lbl:'ISMS sub-processor disclosure'},
+  ],
+  ws7: [
+    {w1:4,w2:6,ph:2,lbl:'Content capability demo'},
+    {w1:7,w2:9,ph:3,lbl:'Day-1 content concepts'},
+  ],
+  ws8: [
+    {w1:5,w2:7,ph:2,lbl:'Stakeholder mapping'},
+    {w1:8,w2:10,ph:3,lbl:'Training plan draft'},
+  ],
+  ws9: [
+    {w1:3,w2:5,ph:1,lbl:'RMN landscape assessment'},
+    {w1:6,w2:8,ph:2,lbl:'Brand partner mapping'},
+    {w1:9,w2:12,ph:3,lbl:'Day-1 brand commitments'},
+  ],
+  ws10:[
+    {w1:1,w2:3,ph:1,lbl:'Discovery queries response'},
+    {w1:2,w2:4,ph:1,lbl:'Asset register & store survey'},
+    {w1:5,w2:7,ph:2,lbl:'Workstream response outputs'},
+    {w1:6,w2:8,ph:3,lbl:'Hardware procurement'},
+    {w1:9,w2:14,ph:3,lbl:'Technical proof deployment'},
+    {w1:15,w2:18,ph:3,lbl:'Full state prototypes for PoC'},
+  ],
+  ws11:[
+    {w1:6,w2:8,ph:2,lbl:'Support model design'},
+    {w1:9,w2:11,ph:3,lbl:'SLA framework draft'},
+  ],
+  ws12:[
+    {w1:5,w2:7,ph:2,lbl:'SERT submission'},
+    {w1:6,w2:9,ph:3,lbl:'Device approval process'},
+    {w1:9,w2:13,ph:3,lbl:'Hardware procurement'},
+  ],
+  ws13:[
+    {w1:3,w2:5,ph:1,lbl:'Site survey & logistics'},
+    {w1:7,w2:9,ph:3,lbl:'Pilot install planning'},
+    {w1:10,w2:14,ph:3,lbl:'Technical proof install'},
+  ],
+};
+
+// Phase definitions — pre-signing 4 phases across 20 weeks
+var PHASES=[
+  {lbl:'Phase 1  Pre-RFP',  s:1, e:5, col:'#880000'},
+  {lbl:'Phase 2  RFP',      s:6, e:9, col:'#CC0000'},
+  {lbl:'Phase 3  POC',      s:10,e:16,col:'#FF6600'},
+  {lbl:'Phase 4  Signing',  s:17,e:20,col:'#CC8800'},
+];
+
+// Gates — IC Approval and Contract Signature
+var GATES=[
+  {w:6, id:'ic', lbl:'IC Approval',       col:'#CC0000'},
+  {w:17,id:'cs', lbl:'Contract Signature', col:'#CC8800'},
+];
+
+var DEPS=[
+  'WS3→WS12: IC Approval unlocks hardware/SERT submission (W6)',
+  'WS5→WS4: Connectivity survey feeds tech integration scoping',
+  'WS10→WS12: Discovery outputs inform procurement timeline',
+  'WS6→WS4: DPIA initiation unblocks DSA drafting (W7)',
+  'WS1→WS10: Design response informs sensor/hardware spec',
+  'WS12→WS13: Device approval must precede install planning',
+  'WS3→WS4: Capex sign-off enables platform config (W9)',
+  'WS10→WS2: Tech proof deployment validates measurement model',
+];
+
+var RISKS=[
+  'SERT approval: meets first Thursday monthly only — one missed cycle = 4-week delay (WS12)',
+  'Electrical sequencing: if install requires electrical works it escalates to full construction project',
+  'DPIA: must be initiated at Pre-RFP stage — most common cause of delay past the 6-month threshold',
+  'Digital security sign-off: separate from SERT — CMS platform review typically 1-2 months (WS4)',
+  'Contractor assurance: if BCS uses own install team, BP/retailer contractor assurance required (WS13)',
+  '6-month rule: Pre-RFP to signed contract must complete within 6 months or commercial momentum is lost',
+];
+
+function wkDate(w){
+  if(!P.start) return 'W'+w;
+  var d=new Date(P.start); d.setDate(d.getDate()+(w-1)*7);
+  return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+}
+
+function buildWsGrid(){
+  var g=document.getElementById('ws-grid'); g.innerHTML='';
+  WS_DEFS.forEach(function(ws){
+    var t=document.createElement('div');
+    t.className='ws-tile'+(WS_SEL[ws.id]?' on':'');
+    t.innerHTML='<div class="ws-check">'+(WS_SEL[ws.id]?'&#10003;':'')+'</div>'+
+      '<div class="ws-dot" style="background:'+ws.col+'"></div>'+
+      '<div class="ws-name">'+ws.label+'</div>';
+    t.addEventListener('click',function(){
+      WS_SEL[ws.id]=!WS_SEL[ws.id];
+      t.classList.toggle('on',WS_SEL[ws.id]);
+      t.querySelector('.ws-check').innerHTML=WS_SEL[ws.id]?'&#10003;':'';
+    });
+    g.appendChild(t);
+  });
+}
+
+function buildLeadsTable(){
+  var tb=document.getElementById('leads-table'); tb.innerHTML='';
+  WS_DEFS.filter(function(w){return WS_SEL[w.id];}).forEach(function(ws){
+    var tr=document.createElement('tr');
+    tr.innerHTML='<td style="width:42%;padding:7px 10px"><span class="lead-dot" style="background:'+ws.col+'"></span>'+
+      '<span class="lead-ws">'+ws.label+'</span></td>'+
+      '<td style="padding:5px 10px"><input class="lead-inp" type="text" placeholder="'+ws.def+'" value="'+WS_LEADS[ws.id]+'" data-ws="'+ws.id+'"></td>';
+    tb.appendChild(tr);
+  });
+  tb.querySelectorAll('.lead-inp').forEach(function(inp){
+    inp.addEventListener('input',function(){
+      WS_LEADS[inp.dataset.ws]=inp.value||WS_DEFS.find(function(w){return w.id===inp.dataset.ws;}).def;
+    });
+  });
+}
+
+var WS_OVERRIDES={};
+var editMode=false;
+var W=20; // 20 weeks pre-signing
+
+function getActData(){
+  var result={};
+  WS_DEFS.forEach(function(ws){
+    result[ws.id]=WS_OVERRIDES[ws.id]
+      ? WS_OVERRIDES[ws.id].map(function(a){return Object.assign({},a);})
+      : (WS_DATA[ws.id]||[]).map(function(a){return Object.assign({},a);});
+  });
+  return result;
+}
+
+function buildGantt(){
+  var name=P.name||'Retailer';
+  var data=getActData();
+  var active=WS_DEFS.filter(function(w){return WS_SEL[w.id];});
+  var COL=46;
+  var h='';
+  h+='<div class="gantt-wrap" id="gantt-content">';
+  h+='<div class="g-tooltip" id="g-tip"></div>';
+  h+='<div class="g-logo">Barrows Connected Store · Pre-Signing Gantt</div>';
+  h+='<div class="g-title">Pre-Signing Programme — '+name+'</div>';
+  h+='<div class="g-sub">';
+  if(P.start) h+=new Date(P.start).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})+' · ';
+  h+=(P.stores||3)+' POC stores · '+(P.geo?P.geo.toUpperCase()+' · ':'')+(P.sector||'')+(P.sector?' · ':'')+'Phases 1–4';
+  h+='</div><div class="g-divider"></div>';
+  var trackW=W*COL;
+  h+='<div class="g-grid">';
+
+  // Phase header
+  h+='<div class="g-hdr-row"><div class="g-hdr-cell g-hdr-label">Workstream</div>';
+  h+='<div class="g-hdr-cell g-hdr-lead">Lead</div>';
+  h+='<div class="g-hdr-cell g-hdr-role">Role</div>';
+  h+='<div class="g-hdr-cell g-hdr-bars" style="padding:0"><div style="display:flex;height:24px">';
+  PHASES.forEach(function(ph){
+    var pw=(ph.e-ph.s+1)*COL;
+    h+='<div style="width:'+pw+'px;flex-shrink:0;background:'+ph.col+';display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;color:#fff;overflow:hidden;white-space:nowrap;padding:0 3px">'+ph.lbl+'</div>';
+  });
+  h+='</div></div></div>';
+
+  // Week labels
+  h+='<div class="g-hdr-row"><div class="g-hdr-cell g-hdr-label" style="background:#f5f5f5;color:#888!important;font-size:9px;padding-left:8px">Lead / Role</div>';
+  h+='<div class="g-hdr-cell g-hdr-lead" style="background:#f5f5f5"></div>';
+  h+='<div class="g-hdr-cell g-hdr-role" style="background:#f5f5f5"></div>';
+  h+='<div class="g-hdr-cell g-hdr-bars" style="padding:0"><div class="g-wk-hdr">';
+  for(var w=1;w<=W;w++) h+='<div class="g-wk-lbl" style="width:'+COL+'px">'+wkDate(w)+'</div>';
+  h+='</div></div></div>';
+
+  // WS rows
+  active.forEach(function(wsDef){
+    var acts=data[wsDef.id]||[];
+    var lead=WS_LEADS[wsDef.id]||wsDef.def;
+    var lname=lead,lrole='';
+    var m=lead.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
+    if(m){lname=m[1].trim();lrole=m[2].trim();}
+    var wm={};
+    acts.forEach(function(a,ai){
+      for(var w=a.w1;w<=Math.min(a.w2,W);w++){
+        wm[w]={ph:a.ph,lbl:a.lbl,span:a.w2-a.w1+1,isStart:w===a.w1,isEnd:w===a.w2,w1o:a.w1,w2o:a.w2,ai:ai};
+      }
+    });
+    h+='<div class="g-row">';
+    h+='<div class="g-cell g-cell-label">'+wsDef.label+'</div>';
+    h+='<div class="g-cell g-cell-lead">'+lname+'</div>';
+    h+='<div class="g-cell g-cell-role">'+lrole+'</div>';
+    h+='<div class="g-cell g-bars-cell" style="width:'+trackW+'px;min-width:'+trackW+'px">';
+    h+='<div class="g-bars-track" style="width:'+trackW+'px">';
+    for(var w=0;w<=W;w++) h+='<div class="g-wk-line" style="left:'+(w*COL)+'px"></div>';
+
+    // Gate vertical lines
+    GATES.forEach(function(g){
+      if(g.w>=1&&g.w<=W){
+        var gx=(g.w-1)*COL;
+        h+='<div class="g-gate-pip" style="left:'+gx+'px;background:'+g.col+'"></div>';
+        h+='<div class="g-gate-lbl" style="left:'+(gx+3)+'px">'+g.lbl+'</div>';
+      }
+    });
+
+    // Bars
+    var wi=1;
+    while(wi<=W){
+      var c=wm[wi];
+      if(c&&c.isStart){
+        var sp=Math.min(c.span,W-wi+1);
+        var ai=c.ai;
+        var bx=(wi-1)*COL+1;
+        var bw=sp*COL-2;
+        h+='<div class="g-bar bar-ph'+c.ph+(editMode?' drag-mode':'')+'" '+
+          'data-ws="'+wsDef.id+'" data-ai="'+ai+'" '+
+          'style="left:'+bx+'px;width:'+bw+'px" '+
+          'title="'+c.lbl+' (W'+c.w1o+'–W'+c.w2o+')">';
+        if(editMode) h+='<div class="rz rz-l" data-dir="l"></div>';
+        h+='<span>'+c.lbl+'</span>';
+        if(editMode) h+='<div class="rz rz-r" data-dir="r"></div>';
+        h+='</div>';
+        wi+=sp;
+      } else if(c&&!c.isStart){
+        wi++;
+      } else {
+        wi++;
+      }
+    }
+    h+='</div></div></div>';
+  });
+  h+='</div>';
+
+  if(OPTS.showDeps){
+    h+='<div class="dep-panel"><div class="dep-title">Cross-workstream dependencies</div><div class="dep-grid">';
+    DEPS.forEach(function(d){h+='<div class="dep-item">'+d+'</div>';});
+    h+='</div></div>';
+  }
+  if(OPTS.showRisks){
+    var risks=RISKS.slice();
+    if(P.sector==='petrol') risks.splice(0,0,'Petrol/forecourt: SERT approval critical — submit to SERT before W4 to avoid monthly meeting cycle delays');
+    if(P.geo==='uk') risks.push('UK: GDPR & Digital Markets Act — DPIA must be initiated at Phase 1, not Phase 3');
+    if(P.geo==='us') risks.push('US: CCPA and state privacy laws — confirm data handling requirements before Phase 2');
+    h+='<div class="risk-panel"><div class="risk-title">Risk flags</div>';
+    risks.forEach(function(r){h+='<div class="risk-item"><span class="risk-bullet">&#9888;</span>'+r+'</div>';});
+    h+='</div>';
+  }
+  if(OPTS.showLegend){
+    h+='<div class="legend-row">';
+    [{ph:1,col:'#880000',lbl:'Phase 1 Pre-RFP'},{ph:2,col:'#CC0000',lbl:'Phase 2 RFP'},{ph:3,col:'#FF6600',lbl:'Phase 3 POC'},{ph:4,col:'#CC8800',lbl:'Phase 4 Signing'}].forEach(function(p){
+      h+='<div class="leg"><div class="leg-swatch" style="background:'+p.col+'"></div>'+p.lbl+'</div>';
+    });
+    GATES.forEach(function(g){
+      h+='<div class="leg"><div style="width:2px;height:10px;background:'+g.col+'"></div> '+g.lbl+'</div>';
+    });
+    h+='</div>';
+  }
+  h+='<div class="g-footer">Generated by BCS Onboarding Suite · Pre-Signing Gantt · '+new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})+'</div>';
+  h+='</div>';
+  document.getElementById('gantt-out').innerHTML=h;
+  if(editMode) attachDragListeners(COL,W);
+}
+
+function attachDragListeners(COL,W){
+  var tip=document.getElementById('g-tip');
+  document.querySelectorAll('.g-bar.drag-mode').forEach(function(bar){
+    var wsId=bar.dataset.ws;
+    var ai=parseInt(bar.dataset.ai);
+    function saveOverride(w1,w2){
+      w1=Math.max(1,Math.min(W,w1));
+      w2=Math.max(w1,Math.min(W,w2));
+      if(!WS_OVERRIDES[wsId]) WS_OVERRIDES[wsId]=(WS_DATA[wsId]||[]).map(function(a){return Object.assign({},a);});
+      WS_OVERRIDES[wsId][ai].w1=w1;
+      WS_OVERRIDES[wsId][ai].w2=w2;
+      document.getElementById('btn-reset-all').style.display='';
+    }
+    function updateBarVisual(bar,w1,w2){
+      bar.style.left=((w1-1)*COL+1)+'px';
+      bar.style.width=((w2-w1+1)*COL-2)+'px';
+      bar.title=(bar.querySelector('span')?bar.querySelector('span').textContent:'')+' (W'+w1+'–W'+w2+')';
+    }
+    function showTip(txt,e){tip.textContent=txt;tip.style.display='block';tip.style.left=(e.clientX+12)+'px';tip.style.top=(e.clientY-28)+'px';}
+    function hideTip(){tip.style.display='none';}
+    bar.addEventListener('mousedown',function(e){
+      if(e.target.classList.contains('rz')) return;
+      e.preventDefault();
+      var startX=e.clientX,startLeft=parseInt(bar.style.left)||0;
+      var barW=parseInt(bar.style.width)||COL,origW1=Math.round(startLeft/COL)+1,span=Math.round(barW/COL);
+      bar.classList.add('dragging');
+      function onMove(e){var dx=e.clientX-startX,snapCol=Math.max(0,Math.min(W-span,Math.round((startLeft+dx)/COL)));var w1=snapCol+1,w2=w1+span-1;updateBarVisual(bar,w1,w2);showTip('W'+w1+' → W'+w2,e);}
+      function onUp(){bar.classList.remove('dragging');document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);var w1=Math.round((parseInt(bar.style.left)||0)/COL)+1,w2=w1+span-1;saveOverride(w1,w2);hideTip();}
+      document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp);
+    });
+    bar.querySelectorAll('.rz').forEach(function(rz){
+      rz.addEventListener('mousedown',function(e){
+        e.preventDefault();e.stopPropagation();
+        var dir=rz.dataset.dir,startX=e.clientX,startLeft=parseInt(bar.style.left)||0,startWidth=parseInt(bar.style.width)||COL;
+        var origW1=Math.round(startLeft/COL)+1,origW2=origW1+Math.round(startWidth/COL)-1;
+        bar.classList.add('dragging');
+        function onMove(e){var dx=e.clientX-startX,w1=origW1,w2=origW2;
+          if(dir==='r'){w2=Math.min(W,origW1+Math.round(Math.max(COL,startWidth+dx)/COL)-1);}
+          else{w1=Math.max(1,Math.min(origW2,Math.round((startLeft+dx)/COL)+1));}
+          updateBarVisual(bar,w1,w2);showTip('W'+w1+' → W'+w2,e);}
+        function onUp(){bar.classList.remove('dragging');document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);var w1=Math.round((parseInt(bar.style.left)||0)/COL)+1,w2=w1+Math.round((parseInt(bar.style.width)||COL)/COL)-1;saveOverride(w1,w2);hideTip();}
+        document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp);
+      });
+    });
+  });
+}
+
+function exportHTML(){
+  var name=(P.name||'Retailer').replace(/[^a-z0-9]/gi,'_');
+  var el=document.getElementById('gantt-content');
+  if(!el) return;
+  var st=document.querySelector('style').textContent;
+  var out='<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>'+(P.name||'BCS')+' Pre-Signing Gantt</title>'+
+    '<style>body{font-family:Arial,sans-serif;background:#f5f5f5;padding:2rem}'+
+    '.gantt-wrap{max-width:1400px;margin:0 auto;background:#fff;border-radius:12px;padding:2rem;box-shadow:0 2px 20px rgba(0,0,0,.08)}'+
+    st+'</style></head><body>'+el.outerHTML+'</body></html>';
+  var blob=new Blob([out],{type:'text/html;charset=utf-8'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;a.download='BCS_PreSigning_Gantt_'+name+'.html';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(function(){URL.revokeObjectURL(url);},1000);
+}
+
+function rgbToOds(hex){hex=hex.replace('#','');if(hex.length===3)hex=hex.split('').map(function(c){return c+c;}).join('');return '#'+hex.toUpperCase().padStart(6,'0');}
+
+function exportODS(){
+  var name=P.name||'Retailer';
+  var data=getActData();
+  var active=WS_DEFS.filter(function(w){return WS_SEL[w.id];});
+  var phaseColMap=['','#880000','#CC0000','#FF6600','#CC8800','#007C85'];
+  var rows=[];
+  rows.push({cells:[{v:'BCS Pre-Signing Gantt — '+name,bold:true,bg:'#0A0A14',fg:'#FF6B6B',span:3+W}]});
+  rows.push({cells:[{v:(P.start?new Date(P.start).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})+' · ':'')+(P.stores||3)+' stores · Phases 1–4'}]});
+  rows.push({cells:[{v:''}]});
+  var phHdr=[{v:'Workstream',bold:true,bg:'#F5F5F5',fg:'#333'},{v:'Lead',bold:true,bg:'#F5F5F5',fg:'#333'},{v:'Role',bold:true,bg:'#F5F5F5',fg:'#333'}];
+  PHASES.forEach(function(ph){for(var w=ph.s;w<=ph.e;w++) phHdr.push({v:w===ph.s?ph.lbl:'',bold:true,bg:rgbToOds(ph.col),fg:'#FFFFFF'});});
+  rows.push({cells:phHdr});
+  var wkHdr=[{v:'',bg:'#F5F5F5'},{v:'',bg:'#F5F5F5'},{v:'',bg:'#F5F5F5'}];
+  for(var w=1;w<=W;w++) wkHdr.push({v:wkDate(w),bg:'#F5F5F5',fg:'#888'});
+  rows.push({cells:wkHdr});
+  active.forEach(function(wsDef,ri){
+    var acts=data[wsDef.id]||[];
+    var lead=WS_LEADS[wsDef.id]||wsDef.def;
+    var lname=lead,lrole='';
+    var m=lead.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
+    if(m){lname=m[1].trim();lrole=m[2].trim();}
+    var wm={};
+    acts.forEach(function(a){for(var w=a.w1;w<=Math.min(a.w2,W);w++) wm[w]={lbl:a.lbl,ph:a.ph,isStart:w===a.w1};});
+    var rowBg=ri%2===0?'#FFFFFF':'#F9F9F9';
+    var cells=[{v:wsDef.label,bold:true,bg:'#FFF5F5',fg:'#0A0A14'},{v:lname,bold:true,bg:'#FFF5F5',fg:'#CC0000'},{v:lrole,bg:'#FFF5F5',fg:'#999'}];
+    for(var w=1;w<=W;w++){var c=wm[w];if(c){cells.push({v:c.isStart?c.lbl:'',bg:rgbToOds(phaseColMap[c.ph]||'#CC0000'),fg:'#FFFFFF',bold:c.isStart});}else{cells.push({v:'',bg:rowBg});}}
+    rows.push({cells:cells});
+  });
+  rows.push({cells:[{v:''}]});
+  rows.push({cells:[{v:'DEPENDENCIES',bold:true,bg:'#FFF0F0',fg:'#CC0000'}]});
+  DEPS.forEach(function(d){rows.push({cells:[{v:d,bg:'#FFF8F8'}]});});
+  rows.push({cells:[{v:''}]});
+  rows.push({cells:[{v:'RISK FLAGS',bold:true,bg:'#FFF8E7',fg:'#CC8800'}]});
+  RISKS.forEach(function(r){rows.push({cells:[{v:r,bg:'#FFFDF0'}]});});
+  var styleMap={},styleList=[],styleIdx=0;
+  function getStyle(bg,fg,bold){var key=(bg||'')+'|'+(fg||'')+'|'+(bold?'1':'0');if(!styleMap[key]){var sname='ce'+styleIdx++;styleMap[key]=sname;styleList.push({name:sname,bg:bg,fg:fg,bold:bold});}return styleMap[key];}
+  function buildCellStyleXML(){var xml='';styleList.forEach(function(s){xml+='<style:style style:name="'+s.name+'" style:family="table-cell" style:parent-style-name="Default"><style:table-cell-properties '+(s.bg?'fo:background-color="'+s.bg+'" ':'')+'fo:padding="0.1cm" style:vertical-align="middle"/><style:text-properties '+(s.fg?'fo:color="'+s.fg+'" ':'')+(s.bold?'fo:font-weight="bold" ':'')+' fo:font-size="9pt"/></style:style>';});return xml;}
+  var colStyleXML='<style:style style:name="co1" style:family="table-column"><style:table-column-properties fo:break-before="auto" style:column-width="5.0cm"/></style:style>';
+  colStyleXML+='<style:style style:name="co2" style:family="table-column"><style:table-column-properties fo:break-before="auto" style:column-width="3.5cm"/></style:style>';
+  colStyleXML+='<style:style style:name="co3" style:family="table-column"><style:table-column-properties fo:break-before="auto" style:column-width="3.0cm"/></style:style>';
+  colStyleXML+='<style:style style:name="co4" style:family="table-column"><style:table-column-properties fo:break-before="auto" style:column-width="2.0cm"/></style:style>';
+  var rowStyleXML='<style:style style:name="ro1" style:family="table-row"><style:table-row-properties style:row-height="0.7cm" fo:break-before="auto" style:use-optimal-row-height="false"/></style:style>';
+  var rowsXML='';
+  rows.forEach(function(row){
+    rowsXML+='<table:table-row table:style-name="ro1">';
+    row.cells.forEach(function(cell){
+      var sname=getStyle(cell.bg||null,cell.fg||null,cell.bold||false);
+      var spanned=cell.span>1?(' table:number-columns-spanned="'+cell.span+'"'):'';
+      rowsXML+='<table:table-cell table:style-name="'+sname+'" office:value-type="string"'+spanned+'>';
+      if(cell.v) rowsXML+='<text:p>'+String(cell.v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</text:p>';
+      rowsXML+='</table:table-cell>';
+      if(cell.span>1){for(var s=1;s<cell.span;s++) rowsXML+='<table:covered-table-cell/>';}
+    });
+    rowsXML+='</table:table-row>';
+  });
+  var cellStyleXML=buildCellStyleXML();
+  var contentXML='<?xml version="1.0" encoding="UTF-8"?><office:document-content xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0" xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0" xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0" xmlns:xlink="http://www.w3.org/1999/xlink" office:version="1.2"><office:automatic-styles>'+colStyleXML+rowStyleXML+cellStyleXML+'</office:automatic-styles><office:body><office:spreadsheet><table:table table:name="Pre-Signing Gantt"><table:table-column table:style-name="co1"/><table:table-column table:style-name="co2"/><table:table-column table:style-name="co3"/><table:table-column table:style-name="co4" table:number-columns-repeated="'+W+'"/>'+rowsXML+'</table:table></office:spreadsheet></office:body></office:document-content>';
+  var mimetypeStr='application/vnd.oasis.opendocument.spreadsheet';
+  var manifestXML='<?xml version="1.0" encoding="UTF-8"?><manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0"><manifest:file-entry manifest:full-path="/" manifest:media-type="'+mimetypeStr+'"/><manifest:file-entry manifest:full-path="content.xml" manifest:media-type="text/xml"/></manifest:manifest>';
+  function strToBytes(str){var bytes=[];for(var i=0;i<str.length;i++){var code=str.charCodeAt(i);if(code<128){bytes.push(code);}else if(code<2048){bytes.push(0xC0|(code>>6));bytes.push(0x80|(code&0x3F));}else{bytes.push(0xE0|(code>>12));bytes.push(0x80|((code>>6)&0x3F));bytes.push(0x80|(code&0x3F));}}return new Uint8Array(bytes);}
+  function crc32(data){var crc=0xFFFFFFFF,table=[];for(var i=0;i<256;i++){var c=i;for(var j=0;j<8;j++) c=c&1?(0xEDB88320^(c>>>1)):(c>>>1);table[i]=c;}for(var i=0;i<data.length;i++) crc=table[(crc^data[i])&0xFF]^(crc>>>8);return(crc^0xFFFFFFFF)>>>0;}
+  function u32(n){return[(n&0xFF),((n>>8)&0xFF),((n>>16)&0xFF),((n>>24)&0xFF)];}
+  function u16(n){return[(n&0xFF),((n>>8)&0xFF)];}
+  function makeEntry(fn,data){var fnB=strToBytes(fn),crc=crc32(data),lh=[0x50,0x4B,0x03,0x04,0x14,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00].concat(u32(crc)).concat(u32(data.length)).concat(u32(data.length)).concat(u16(fnB.length)).concat(u16(0));var loc=new Uint8Array(lh.length+fnB.length+data.length);loc.set(new Uint8Array(lh),0);loc.set(fnB,lh.length);loc.set(data,lh.length+fnB.length);return{local:loc,crc:crc,size:data.length,fn:fnB,offset:0};}
+  var mimeB=strToBytes(mimetypeStr),contB=strToBytes(contentXML),manifB=strToBytes(manifestXML);
+  var e1=makeEntry('mimetype',mimeB),e2=makeEntry('content.xml',contB),e3=makeEntry('META-INF/manifest.xml',manifB);
+  var totL=e1.local.length+e2.local.length+e3.local.length;
+  e1.offset=0;e2.offset=e1.local.length;e3.offset=e2.offset+e2.local.length;
+  function makeCDE(e){var h=[0x50,0x4B,0x01,0x02,0x14,0x00,0x14,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00].concat(u32(e.crc)).concat(u32(e.size)).concat(u32(e.size)).concat(u16(e.fn.length)).concat(u16(0)).concat(u16(0)).concat(u16(0)).concat(u16(0)).concat(u32(0)).concat(u32(e.offset));var cd=new Uint8Array(h.length+e.fn.length);cd.set(new Uint8Array(h),0);cd.set(e.fn,h.length);return cd;}
+  var cd1=makeCDE(e1),cd2=makeCDE(e2),cd3=makeCDE(e3),cdSz=cd1.length+cd2.length+cd3.length;
+  var eocd=[0x50,0x4B,0x05,0x06,0x00,0x00,0x00,0x00].concat(u16(3)).concat(u16(3)).concat(u32(cdSz)).concat(u32(totL)).concat(u16(0));
+  var total=new Uint8Array(totL+cdSz+eocd.length);var pos=0;
+  [e1.local,e2.local,e3.local,cd1,cd2,cd3,new Uint8Array(eocd)].forEach(function(arr){total.set(arr,pos);pos+=arr.length;});
+  var blob=new Blob([total],{type:'application/vnd.oasis.opendocument.spreadsheet'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;a.download='BCS_PreSigning_Gantt_'+(name.replace(/[^a-z0-9]/gi,'_'))+'.ods';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(function(){URL.revokeObjectURL(url);},2000);
+}
+
+function show(name){
+  document.querySelectorAll('.step').forEach(function(s){s.classList.remove('active');});
+  document.getElementById('s-'+name).classList.add('active');
+  var steps={profile:1,workstreams:2,leads:3,options:4,gantt:5};
+  var n=steps[name];
+  document.getElementById('prog').style.width=(n*20)+'%';
+  ['ps1','ps2','ps3','ps4','ps5'].forEach(function(id,i){
+    document.getElementById(id).className='prog-step'+(i+1<n?' done':i+1===n?' act':'');
+  });
+  window.scrollTo(0,0);
+}
+
+document.querySelectorAll('.pills[data-key]').forEach(function(g){
+  g.querySelectorAll('.pill').forEach(function(p){
+    p.addEventListener('click',function(){
+      g.querySelectorAll('.pill').forEach(function(x){x.classList.remove('on');});
+      p.classList.add('on');P[g.dataset.key]=p.dataset.val;
+    });
+  });
+});
+document.getElementById('p-name').addEventListener('input',function(){P.name=this.value;});
+document.getElementById('p-start').addEventListener('change',function(){P.start=this.value;});
+document.getElementById('p-stores').addEventListener('change',function(){P.stores=parseInt(this.value)||3;});
+document.querySelectorAll('.opt-toggle').forEach(function(t){
+  t.addEventListener('click',function(){OPTS[t.dataset.key]=!OPTS[t.dataset.key];t.classList.toggle('on',OPTS[t.dataset.key]);});
+});
+document.getElementById('btn-to-ws').addEventListener('click',function(){buildWsGrid();show('workstreams');});
+document.getElementById('btn-back-ws').addEventListener('click',function(){show('profile');});
+document.getElementById('btn-to-leads').addEventListener('click',function(){buildLeadsTable();show('leads');});
+document.getElementById('btn-back-leads').addEventListener('click',function(){show('workstreams');});
+document.getElementById('btn-to-opts').addEventListener('click',function(){show('options');});
+document.getElementById('btn-back-opts').addEventListener('click',function(){show('leads');});
+document.getElementById('btn-generate').addEventListener('click',function(){buildGantt();show('gantt');});
+document.getElementById('btn-back-gantt').addEventListener('click',function(){show('options');});
+document.getElementById('btn-html').addEventListener('click',exportHTML);
+document.getElementById('btn-sheets').addEventListener('click',exportODS);
+document.getElementById('btn-edit-toggle').addEventListener('click',function(){
+  editMode=!editMode;
+  this.classList.toggle('active',editMode);
+  this.innerHTML=editMode?'&#10005; Done editing':'&#9998; Edit timeline';
+  document.getElementById('edit-hint').style.display=editMode?'block':'none';
+  buildGantt();
+});
+document.getElementById('btn-reset-all').addEventListener('click',function(){
+  WS_OVERRIDES={};this.style.display='none';buildGantt();
+});
+
+</script>
+</body>
+</html>
